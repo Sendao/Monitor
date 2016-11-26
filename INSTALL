@@ -1,0 +1,13 @@
+# 0. be root.
+
+# 1. Fix the location in 'monitor.service' to point to the right runtime path.
+# ( So, send-slack.sh must be in PATH or it won't run as a service. workaround is to cwd from within the code or pipe)
+
+# 2. Run the 'install_services' to copy demo and monitor services to /etc/systemd/system.
+
+# 3. Theorhetically, service monitor start ... but I haven't gotten that to actually work.
+
+# 4. Instead, run 'screen -dm ./monitor ./monitor.cfg' or tmux new -s 'monitor' -d './monitor ./monitor.cfg' to start the service.
+
+# 5. Wait for updates! play some psdoom http://psdoom.sourceforge.net/
+

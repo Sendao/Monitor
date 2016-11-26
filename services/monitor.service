@@ -1,0 +1,12 @@
+[Unit]
+Description=Application Monitor
+
+[Service]
+ExecStart=/home/sendao/as/monitor/monitor
+WorkingDirectory=/home/sendao/as/monitor
+StandardOutput=null
+StandardError=syslog
+Restart=on-failure
+
+[Install]
+Alias=appmon.service

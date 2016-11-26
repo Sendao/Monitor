@@ -1,0 +1,56 @@
+#!/bin/bash
+
+PIDFILE=/tmp/.monitor_pid
+MONDIR=/root/monitor
+
+case $1 in
+    start)
+        echo "Starting Monitor."
+
+        cd $MONDIR
+        rm -f $PIDFILE
+        nohup ./monitor
+        echo $! > $PIDFILE
+        
+        echo "Monitor started."
+    ;;
+    status)
+        if [ -f /tmp/.monitor_pid ]; then
+            echo "Checking 
+            LC = `ps aux | grep `cat $PIDFILE` | wc -l`
+            if [ $LC == 2 ]; then
+                echo "Monitor service running."
+            else
+                echo "Cannot find monitor service running."
+            fi
+        else
+            echo "No pidfile found. (not running)"
+        fi
+    ;;
+    stop)
+        if [ -f $PIDFILE ]; then
+            PID=$(cat $PIDFILE)
+            echo "Monitor stoping."
+            kill $PID
+            echo "Monitor stopped."
+            rm $PIDFILE
+        else
+            echo "Monitor is not running."
+        fi
+    ;;
+    restart)
+        if [ -f $PIDFILE ]; then
+            PID=$(cat $PIDFILE)
+            echo "Monitor stopping."
+            kill $PID
+            echo "Monitor stopped."
+            cd $MONDIR
+            rm -f $PIDFILE
+            nohup ./monitor
+            echo $! > $PIDFILE
+            echo "Monitor started."
+        else
+            echo "Monitor is not running."
+        fi
+    ;;
+esac 

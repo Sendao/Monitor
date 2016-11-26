@@ -1,0 +1,48 @@
+Todo:
+ - make sure logfiles are updating using inotify and not just iterate()
+ - make sure close(inotify_fd);
+ - config file loader should be a separate class than its handlers, eg configloader+configvars
+
+The basic classes:
+
+Pipe: A two-way stream interface to a process or bash shell, depending how it's configured.
+
+Curler: Sends web requests via curl.
+Curlpage: A web request. Results available via Curlpage->handler
+
+ControlFile: A control file which can accept basic commands to start/stop/restart/instance processes.
+ ControlFile->RegisterCommand(): register a command other than start/stop/restart/instance
+
+Monitor: Maintains the collection of items to be monitored.
+
+The Monitor may index the following structs:
+ runprocess: A runtime process. It will be kept running and monitored for CPU&Memory use.
+ logfile: A logfile for some process. When it changes, reports will be sent.
+ monitor_item: A grouping of processes and logfiles to aggregate into one logfile.
+ - webaddress:  Easily added. A web address to scan for errors (500/404)
+ pid_record: A scan of /proc/<pidid>/stat
+ pid_data: Calculated values over time for CPU usage
+
+
+Planning:
+
+
+Halflings:
+ - branch revisions
+  - service links
+   - multiple services on a branch
+ - query and log branches and commits on setup  
+  - pull revision
+  - couch redeploy script
+  -  
+
+Todo:
+ - test 'instance' command
+ - test that 'stop' command properly 'pauses' running groups
+ - verify 'loglines' command works (eg with npm)
+ - trigger on anomalous conditions
+  - cpu usage
+  - memory usage
+  - configuration
+   - level, response('slack', email, logglykey:handle, or eval bash script)
+
