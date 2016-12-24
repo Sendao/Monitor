@@ -5,19 +5,10 @@
 //! eg post renice -n 19 $PID
 //! todo: add 'watch' command for restarting dev
 monitor_item *cfg_item=NULL;
+char *mainlogfn;
 logfile *cfg_lf=NULL;
 watchfile *cfg_wf=NULL;
 runprocess *cfg_rp=NULL;
-
-bool cfg_boolean( const char *value, bool default_value=true )
-{
-	if( !value || !*value )
-		return default_value;
-	if( str_cn_cmp(value, "true") == 0 || str_c_cmp(value, "on") == 0 || str_c_cmp(value, "true") == 0 || str_cn_cmp(value, "yes") == 0 || str_c_cmp(value, "1") == 0 ) {
-		return true;
-	}
-	return false;
-}
 
 void cfg_create_group( const char *value )
 {
@@ -86,6 +77,7 @@ void cfg_logarchivecmd( const char *value )
 		return;
 	}
 
+	if( cfg_item->log_archive_cmd ) free(cfg_item->log_archive_cmd);
 	cfg_item->log_archive_cmd = strdup(value);
 }
 
@@ -102,17 +94,16 @@ void cfg_warmup( const char *value )
 void cfg_logto( const char *value )
 {
 	if( !cfg_item ) {
-		lprintf("Config: logto without group or process.");
+		lprintf("Main logfile: %s", value);
+		if( mainlogfn ) free(mainlogfn);
+		mainlogfn = strdup(value);
 		return;
 	}
 
 	if( cfg_rp ) {
-
 		if( cfg_rp->logtofn ) free(cfg_rp->logtofn);
 		cfg_rp->logtofn = strdup(value);
-
 	} else {
-		lprintf("Main logfile: %s", value);
 		if( cfg_item->mainlog ) free(cfg_item->mainlog);
 		cfg_item->mainlog = strdup(value);
 
@@ -203,7 +194,7 @@ void cfg_subdirs( const char *value )
 		return;
 	}
 
-	cfg_wf->subdirs = cfg_boolean( value, true );
+	cfg_wf->subdirs = BooleanString( value, true );
 }
 
 void cfg_action( const char *value )
@@ -213,6 +204,8 @@ void cfg_action( const char *value )
 		return;
 	}
 
+	// action: command to run on watchfile change.
+	// default||restart: restart the group.
 	if( cfg_wf->action ) free(cfg_wf->action);
 	cfg_wf->action = strdup(value);
 }
@@ -243,7 +236,7 @@ void cfg_keeprunning( const char *value )
 		lprintf("Config: keeprunning without process.");
 		return;
 	}
-	cfg_rp->keeprunning = cfg_boolean( value, true );
+	cfg_rp->keeprunning = BooleanString( value, true );
 }
 
 void cfg_psgrep( const char *value )
@@ -288,7 +281,7 @@ void cfg_stop( const char *value )
 		lprintf("Config: stop without process.");
 		return;
 	}
-	if( cfg_rp->startcmd ) free(cfg_rp->stopcmd);
+	if( cfg_rp->stopcmd ) free(cfg_rp->stopcmd);
 	cfg_rp->stopcmd = strdup(value);
 }
 void cfg_service( const char *value )
@@ -297,7 +290,7 @@ void cfg_service( const char *value )
 		lprintf("Config: service without process.");
 		return;
 	}
-	if( cfg_rp->startcmd ) free(cfg_rp->servicename);
+	if( cfg_rp->servicename ) free(cfg_rp->servicename);
 	cfg_rp->servicename = strdup(value);
 }
 void cfg_autostart( const char *value )
@@ -307,7 +300,7 @@ void cfg_autostart( const char *value )
 		return;
 	}
 
-	cfg_rp->autostart = cfg_boolean( value, true );
+	cfg_rp->autostart = BooleanString( value, true );
 }
 void cfg_use_shellpid( const char *value )
 {
@@ -316,7 +309,7 @@ void cfg_use_shellpid( const char *value )
 		return;
 	}
 
-	cfg_rp->use_shellpid = cfg_boolean( value, true );
+	cfg_rp->use_shellpid = BooleanString( value, true );
 }
 void cfg_noshell( const char *value )
 {
@@ -325,7 +318,7 @@ void cfg_noshell( const char *value )
 		return;
 	}
 
-	cfg_rp->noshell = cfg_boolean( value, false );
+	cfg_rp->noshell = BooleanString( value, false );
 }
 void cfg_newsid( const char *value )
 {
@@ -334,7 +327,7 @@ void cfg_newsid( const char *value )
 		return;
 	}
 
-	cfg_rp->use_newsid = cfg_boolean( value, true );
+	cfg_rp->use_newsid = BooleanString( value, true );
 }
 
 typedef void config_func( const char * );
@@ -348,6 +341,10 @@ void loadConfig( const char *path )
 	char *line, *key, *value;
 
 	SMap *config_funcs = new SMap(32);
+
+	mainlogfn = strdup("/tmp/monitor.log");
+
+
 	config_funcs->Set( "group", (void*)cfg_create_group );
 	config_funcs->Set( "warmup", (void*)cfg_warmup );
 	config_funcs->Set( "require", (void*)cfg_require );

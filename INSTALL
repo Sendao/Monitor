@@ -11,7 +11,3 @@
 
 # 5. Wait for updates! play some psdoom http://psdoom.sourceforge.net/
 
-
-Requirements:
-`apt-get install libcurl4-openssl-dev`
-

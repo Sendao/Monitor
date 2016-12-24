@@ -58,11 +58,10 @@ public:
 
 
 	void LogCrash( runprocess*, const char *howfound );
-	void LogMessage( runprocess*, const char *, ... );
-	void LogMessage( monitor_item*, const char *, ... );
 	void LogglySend( const char *_key, const char *_tag, const char *buf );
 	void LogglyPuts( monitor_item*, const char *buf );
 	void Lprintf( monitor_item*, const char *, ... );
+	void Lprintf( runprocess*, const char *, ... );
 	void QueueCommand(const char *cmd, void *data=NULL, void *data2=NULL); // for system commands e.g., "service zyx start"
 
 	runprocess *GetProcess( monitor_item*, const char *);
@@ -78,6 +77,7 @@ public:
 	bool Start(monitor_item *); // start all tasks associated with an item
 	bool start_logfile(monitor_item *, logfile *); // register a logfile with inotify
 	bool start_watchfile(monitor_item *, watchfile *);
+	void force_start_process(monitor_item *, runprocess *); // start a runtime process
 	bool start_process(monitor_item *, runprocess *); // start a runtime process
 	void start_logfile_directory( monitor_item *item, logfile *lf_item, const char * );
 
@@ -222,7 +222,7 @@ struct _runprocess
 
 	time_t last_downtime_start;
 	int start_tries;
-
+//	time_t start_again;
 	time_t start_time;
 	int warmup;
 	bool dubious;

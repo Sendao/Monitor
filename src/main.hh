@@ -51,9 +51,11 @@ extern logfile *cfg_lf;
 extern runprocess *cfg_rp;
 extern Curler *curl;
 extern bool is_daemon;
+extern char *mainlogfn;
 
 void loadConfig( const char *path );
 long DiskSize( const char *size );
+bool BooleanString( const char *, bool );
 void lprintf( const char *, ... );
 void dlog( int flag, const char *, ... );
 

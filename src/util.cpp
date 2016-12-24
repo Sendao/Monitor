@@ -1,62 +1,5 @@
 #include "main.hh"
 
-// main logger
-int logflags = LOG_ONE | LOG_TWO | LOG_THREE | LOG_FOUR;
-
-void dlog( int flag, const char *fmt, ... )
-{
-	if( ( logflags & flag ) != flag ) return;
-
-	stringbuf sb;
-    FILE *fp;
-    va_list args;
-    struct timeval tv_now;
-
-    va_start(args, fmt);
-    sb.vsprintf(fmt, args);
-    va_end(args);
-
-    gettimeofday( &tv_now, NULL );
-    tv_now.tv_sec %= 1000;
-
-    struct tm realtime;
-    time_t tmx;
-    tmx = time(NULL);
-    localtime_r( &tmx, &realtime );
-
-    fp = fopen("/tmp/monitor.log", "a");
-	if( !fp ) {
-		return;
-	}
-	fprintf(fp, "%d:%d:%d %ld.%06ld %d:%s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, flag, sb.p);
-    fclose(fp);
-}
-void lprintf( const char *fmt, ... )
-{
-	stringbuf sb;
-    FILE *fp;
-    va_list args;
-    struct timeval tv_now;
-
-    va_start(args, fmt);
-    sb.vsprintf(fmt, args);
-    va_end(args);
-
-    gettimeofday( &tv_now, NULL );
-    tv_now.tv_sec %= 1000;
-
-    struct tm realtime;
-    time_t tmx;
-    tmx = time(NULL);
-    localtime_r( &tmx, &realtime );
-
-    fp = fopen("/tmp/monitor.log", "a");
-	if( !fp ) {
-		return;
-	}
-	fprintf(fp, "%d:%d:%d %ld.%06ld %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, sb.p);
-    fclose(fp);
-}
 // process management
 bool pid_is_online( int pid )
 {
@@ -118,6 +61,15 @@ long DiskSize( const char *value )
 	return atol(intbuf);
 }
 
+bool BooleanString( const char *value, bool default_value=true )
+{
+	if( !value || !*value )
+		return default_value;
+	if( str_cn_cmp(value, "true") == 0 || str_c_cmp(value, "on") == 0 || str_c_cmp(value, "true") == 0 || str_cn_cmp(value, "yes") == 0 || str_c_cmp(value, "1") == 0 ) {
+		return true;
+	}
+	return false;
+}
 
 
 
@@ -207,29 +159,6 @@ pid_record *new_pid_record( void )
 	return item;
 }
 
-pid_record *get_pid_record( int pid )
-{
-	char buf[256];
-	sprintf(buf, "/proc/%d/stat", pid);
-	char *filebuf = readFile(buf);
-	if( !filebuf || !*filebuf ) return NULL;
-
-	tlist *details = split(filebuf, " ");
-	pid_record *pr = new_pid_record();
-	gettimeofday( &pr->at, NULL );
-	char *arg;
-	arg = (char*)details->FindData(2);
-	if( arg )
-		pr->pidstate = *arg;
-	long ut = atol( (char*)details->FindData(15) );
-	long st = atol( (char*)details->FindData(16) );
-
-	pr->utime.tv_usec = ut;
-	tv_set(&pr->utime);
-	pr->stime.tv_usec = st;
-	tv_set(&pr->stime);
-	return pr;
-}
 
 void free_monitor_item( monitor_item *item )
 {

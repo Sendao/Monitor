@@ -13,8 +13,7 @@ void cmd_start(tlist *args)
 	if( procname ) {
 		runprocess *rp = mon->GetProcess(item, procname);
 		if( rp ) {
-			rp->paused = false;
-			mon->start_process(item, rp);
+			mon->force_start_process(item, rp);
 			return;
 		}
 
@@ -244,138 +243,8 @@ void monitor_checkup_repo_branch_cb( Curler *c, Curlpage *cp )
 }
 
 
-void Monitor::LogMessage( monitor_item *item, const char *fmt, ... )
-{
-	stringbuf sb;
-    FILE *fp;
-    va_list args;
-    struct timeval tv_now;
-
-    va_start(args, fmt);
-    sb.vsprintf(fmt, args);
-    va_end(args);
-
-    gettimeofday( &tv_now, NULL );
-    tv_now.tv_sec %= 1000;
-
-    struct tm realtime;
-    time_t tmx;
-    tmx = time(NULL);
-    localtime_r( &tmx, &realtime );
-
-    if( item->mainlog )
-    	fp = fopen(item->mainlog, "a");
-    else
-    	fp = NULL;
-    fprintf(stdout, "%d:%d:%d %ld.%06ld %s %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, item->name, sb.p);
-    fflush(stdout);
-	if( !fp ) {
-		return;
-	}
-	fprintf(fp, "%d:%d:%d %ld.%06ld %s %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, item->name, sb.p);
-    fclose(fp);
-
-    if( logglyKey && logglyTag ) {
-    	Lprintf( item, "%ld.%06ld %s %s", tv_now.tv_sec, tv_now.tv_usec, item->name, sb.p);
-    }
-}
-
-void Monitor::LogMessage( runprocess *rp, const char *fmt, ... )
-{
-	stringbuf sb;
-    FILE *fp;
-    va_list args;
-    struct timeval tv_now;
-
-    va_start(args, fmt);
-    sb.vsprintf(fmt, args);
-    va_end(args);
-
-
-    gettimeofday( &tv_now, NULL );
-    tv_now.tv_sec %= 1000;
-
-    struct tm realtime;
-    time_t tmx;
-    tmx = time(NULL);
-    localtime_r( &tmx, &realtime );
-
-    fp = fopen(rp->logtofn, "a");
-	fprintf(stdout, "%d:%d:%d %ld.%06ld %s %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, rp->name, sb.p);
-	fflush(stdout);
-	if( !fp ) {
-		return;
-	}
-	fprintf(fp, "%d:%d:%d %ld.%06ld %s %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, rp->name, sb.p);
-    fclose(fp);
-
-    if( logglyKey && logglyTag ) {
-    	Lprintf( rp->monitem, "%ld.%06ld %s %s", tv_now.tv_sec, tv_now.tv_usec, rp->name, sb.p);
-    }
-}
-
-void Monitor::LogglySend( const char *_key, const char *_tag, const char *buf )
-{
-	stringbuf sbfix, sa;
-	/* Clean the result
-	sbfix.clear();
-	for( const char *px = buf; *px; px++ ) {
-		if( *px == '"' ) {
-			sbfix.append("\\\"");
-		} else {
-			sbfix.append(*px);
-		}
-	}*/
-
-	//! Using 'system' is a little heavy-handed way to do this, we should probably use socket code here I was just being lazy and didn't add it.
-	//! the monitor can easily handle another i/o socket for this
-	sa.clear();
-	sa.printf("http://logs-01.loggly.com/inputs/%s/tag/%s/", _key ? _key : logglyKey, _tag ? _tag : logglyTag);
-	Curlpage *cp = curl->Get(sa.p, NULL);
-	cp->attachdata(buf);
-	cp->open();
-	/*
-	//sa.printf("curl -s -H \"content-type:text/plain\" -d \"%s\" "http://logs-01.loggly.com/inputs/%s/tag/%s/" >> /var/log/curl.monitor.log", sbfix.p, _key ? _key : logglyKey, _tag ? _tag : logglyTag);
-	if( fork() == 0 ) {
-		execl("/bin/sh", "sh", "-c", sa.p, (char*)0);
-	}
-	*/
-}
-
-void Monitor::LogglyPuts( monitor_item *item, const char *buf )
-{
-    struct timeval tv_now;
-    stringbuf sb;
-
-    gettimeofday( &tv_now, NULL );
-    tv_now.tv_sec %= 1000;
-	sb.printf("%ld.%06ld %s %s", tv_now.tv_sec, tv_now.tv_usec, item->name, buf);
-
-	char *usekey = item->logglyKey ? item->logglyKey : logglyKey;
-	char *usetag = item->logglyTag ? item->logglyTag : logglyTag;
-
-	LogglySend(usekey, usetag, sb.p);
-}
-
-void Monitor::Lprintf( monitor_item *item, const char *fmt, ... )
-{
-	stringbuf sb;
-	va_list args;
-
-	sb.clear();
-	va_start(args,fmt);
-	sb.vsprintf(fmt, args);
-	va_end(args);
-
-	char *usekey = item->logglyKey ? item->logglyKey : logglyKey;
-	char *usetag = item->logglyTag ? item->logglyTag : logglyTag;
-
-	LogglySend(usekey, usetag, sb.p);
-}
-
 void Monitor::close_process_pipe( runprocess *rp )
 {
-
 	dlog(LOG_FIVE, "cpp(%p)", rp);
 
 	if( !rp->shellproc ) return;
@@ -385,79 +254,6 @@ void Monitor::close_process_pipe( runprocess *rp )
 	delete rp->shellproc;
 	rp->shellproc = NULL;
 }
-
-
-void Monitor::LogCrash( runprocess *rp, const char *howfound )
-{
-	tnode *n, *n2;
-	monitor_item *item;
-	runprocess *rp2;
-	bool found=false;
-	stringbuf *sa;
-
-	dlog(LOG_TWO, "crash(%p,%s)", rp, howfound);
-
-	if( rp->isinstance ) {
-		//! We need some way to distinguish graceful closures, but for now, instances will not be logged.
-		return;
-	}
-
-	lprintf("CrashLog[%s]: Restarting Process.", howfound);
-	stop_process(rp);
-
-	forTLIST( item, n, items, monitor_item* ) {
-		forTLIST( rp2, n2, item->processes, runprocess* ) {
-			if( rp2 == rp ) {
-				found=true;
-				break;
-			}
-		}
-		if( found )
-			break;
-	}
-	if( !found ) {
-		lprintf("Couldn't find process group to crash dlogile.");
-		return;
-	}
-
-	logfile *lf;
-	int crashnumber = number_range(10000,99999);
-
-	sa = new stringbuf();
-	sa->printf("rm -f '%s.crash%d'\n", item->name, crashnumber);
-	QueueCommand(sa->p);
-
-	sa->clear();
-	sa->printf("echo \"%s\" > '%s.crash%d'", howfound, item->name, crashnumber);
-
-	forTLIST( lf, n, item->logfiles, logfile* ) {
-		if( sa->len > 0 ) sa->append(" ; ");
-		sa->printf("tail -n%d %s >> '%s.crash%d'", lf->crashlines, lf->path, item->name, crashnumber);
-	}
-	sa->append("\n");
-	lprintf("LogCmd: %s", sa->p);
-	QueueCommand(sa->p);
-
-	if( ( logglyKey || item->logglyKey ) && ( logglyTag || item->logglyTag ) ) {
-        struct timeval tv_now;
-        gettimeofday( &tv_now, NULL );
-        tv_now.tv_sec %= 1000;
-
-    	Lprintf( item, "%ld.%06ld %s %s", tv_now.tv_sec, tv_now.tv_usec, item->name, howfound);
-    }
-
-	sa->clear();
-	sa->printf("./send-slack.sh '%s.crash%d' '#ithinkitcrashed' 'as-bot'\n", item->name, crashnumber);
-	lprintf("LogCmd: %s", sa->p);
-	QueueCommand(sa->p);
-	delete sa;
-
-	start_process(item, rp);
-}
-
-
-
-
 
 
 
@@ -674,7 +470,7 @@ void monitorReadHandler( Pipe *p, char *buf )
 		// find pid, should be first line of readbuffer
 
 		rp->pid = atoi(strstr(buf," "));
-		m->LogMessage(rp, "Pid found: '%d'", rp->pid);
+		m->Lprintf(rp, "Pid found: '%d'", rp->pid);
 		if( rp->pid != 0 ) {
 			rp->runstate = MON_STATE_RUNNING;
 			rp->cmdstate = MON_CMD_NONE;
@@ -766,35 +562,37 @@ bool monitorCmdHandler( Pipe *p )
 				if( str_cmp(rp->cwd, buf) == 0 ) {
 					matchwild=true;
 				}
-				m->LogMessage(rp, "Adjusted directory: %s - %s", p->cwd, buf);
+				m->Lprintf(rp, "Adjusted directory: %s - %s", p->cwd, buf);
 			}
 
 			if( !matchwild ) {
 				sprintf(buf, "cd %s\n", rp->cwd);
 				p->write( buf );
-				m->LogMessage(rp, "Changing directory...");
+				m->Lprintf(rp, "Changing directory...");
 				break;
 			}
 		}
-		p->write( rp->startcmd );
-		if( rp->use_shellpid ) {
-			p->write( " & fg");
-			rp->cmdstate = MON_CMD_SCANNER; // read process id
-		} else {
-			rp->cmdstate = MON_CMD_NONE;
+		if( rp->keeprunning || rp->autostart ) {
+			p->write( rp->startcmd );
+			if( rp->use_shellpid ) {
+				p->write( " & fg");
+				rp->cmdstate = MON_CMD_SCANNER; // read process id
+			} else {
+				rp->cmdstate = MON_CMD_NONE;
+			}
+			p->write( "\n" );
+			rp->runstate = MON_STATE_RUNNING;
+			rp->start_time = time(NULL);
 		}
-		p->write( "\n" );
-		rp->runstate = MON_STATE_RUNNING;
-		rp->start_time = time(NULL);
-		m->LogMessage(rp, "Sending shell process start command");
+		m->Lprintf(rp, "Sending shell process start command");
 		break;
 	default: // we shouldn't get here; indicates the command probably exitted
-		m->LogMessage(rp, "Got shell commandline during runtime");
+		m->Lprintf(rp, "Got shell commandline during runtime");
 		if( rp->dubious ) { // verified: we are at the command line.
-			if( !rp->noshell ) {
+			if( !rp->noshell ) { // todo: detect shell working echo?
 				p->write( "echo Process crashed\nexit\n" );
 			}
-			m->LogMessage(rp, "State %d", rp->runstate);
+			m->Lprintf(rp, "State %d", rp->runstate);
 			m->LogCrash(rp, "[commandline]");
 			return false;
 		} else {
@@ -860,14 +658,14 @@ bool mainCmdHandler( Pipe *p )
 			rp->runstate = MON_STATE_RUNNING;
 			rp->cmdstate = MON_CMD_NONE;
 			if( rp->monitem ) {
-				m->LogMessage( rp->monitem, "Service started.");
+				m->Lprintf( rp->monitem, "Service started.");
 			}
 		} else if( rp->cmdstate == MON_CMD_STATUS ) {
 			if( strstr(buf, "(dead)") ) {
-				m->LogMessage(rp, "Service crashed.");
+				m->Lprintf(rp, "Service crashed.");
 				m->LogCrash( rp, "[service status]" );
 			} else if( !strstr(buf, "(running)") ) {
-				m->LogMessage( rp, "Service has invalid status: '%s'", buf);
+				m->Lprintf( rp, "Service has invalid status: '%s'", buf);
 				m->LogCrash( rp, "[service status-2]" );
 			} else {
 				//report_runprocess(rp); //! trigger heartbeat
@@ -886,10 +684,10 @@ bool mainCmdHandler( Pipe *p )
 			char *x;
 
 			if( lines->count < 1 ) {
-				m->LogMessage(rp, "Psgrep not found: '%s'", rp->psgrep);
+				m->Lprintf(rp, "Psgrep not found: '%s'", rp->psgrep);
 				rp->psgrep_missing++;
 				if( rp->psgrep_missing > 3 ) {
-					m->LogMessage( rp, "Psgrep failure condition (3 strikes)." );
+					m->Lprintf( rp, "Psgrep failure condition (3 strikes)." );
 					m->LogCrash( rp, "[psgrep]" );
 				}
 			} else {
@@ -903,7 +701,7 @@ bool mainCmdHandler( Pipe *p )
 				strip_newline(line);
 				strings = split(line, ":");
 				if( strings->count < 2 ) {
-					m->LogMessage(rp, "Invalid ps line: %s", line);
+					m->Lprintf(rp, "Invalid ps line: %s", line);
 					continue;
 				}
 				x = (char*)strings->FullPop();
@@ -924,7 +722,7 @@ bool mainCmdHandler( Pipe *p )
 			forTSLIST( pd, n, rp->pids, pid_data*, nn ) {
 				if( !dm_current->Get( pd->pid ) ) {
 					rp->pids->Pull(n);
-					m->LogMessage(rp, "Process exited: %d", pd->pid);
+					m->Lprintf(rp, "Process exited: %d", pd->pid);
 					free_pid_data(pd);
 				} else {
 					dm_prev->Set( (uint32_t)pd->pid, (void*)pd );
@@ -939,7 +737,7 @@ bool mainCmdHandler( Pipe *p )
 				x = (char*)np->ptr;
 				pd = (pid_data*)dm_prev->Get(np->idc);
 				if( !pd ) {
-					m->LogMessage(rp, "New pid %u", np->idc);
+					m->Lprintf(rp, "New pid %u", np->idc);
 					pd = new_pid_data();
 					pd->pid = np->idc;
 					pd->procname = strdup(x);
@@ -1064,7 +862,7 @@ bool Monitor::FD_CHECK( fd_set *ins, fd_set *excepts )
 
 	if( inotify_fd >= 0 ) {
 		if( FD_ISSET( inotify_fd, ins ) ) {
-			lprintf("!!!! INOTIFY !!!! inotify events reported");
+			//lprintf("!!!! INOTIFY !!!! inotify events reported");
 			dlog( LOG_SIX, "Read inotify events" );
 			found=true;
 			len = ::read( inotify_fd, ibuf, IBUF_LEN );
@@ -1130,12 +928,12 @@ bool Monitor::FD_CHECK( fd_set *ins, fd_set *excepts )
 		i = p->FD_TEST( ins, excepts );
 		if( i == -1 ) {
 			found=true;
-			LogMessage(rp, "Runtime pipe for process %s errored.", rp->startcmd );
+			Lprintf(rp, "Runtime pipe for process %s errored.", rp->startcmd );
 		} else if( i == 1 ) {
 			found=true;
 			len = p->FD_READ( buf, 1024 );
 			if( len <= 0 ) {
-				LogMessage( rp, "Pipe for %s closed.", rp->startcmd );
+				Lprintf( rp, "Pipe for %s closed.", rp->startcmd );
 				if( rp->runstate != MON_STATE_CRASHED ) {
 					LogCrash(rp, "[pipe closed]");
 				}
@@ -1212,7 +1010,7 @@ bool Monitor::Checkup( monitor_item *item )
 	dlog( LOG_THREE, "checkup" );
 
 	if( item->start_time <= 0 ) {
-		LogMessage(item, "Group not yet started, trying to start it now.");
+		Lprintf(item, "Group not yet started, trying to start it now.");
 		Start(item);
 		return true;
 	}
@@ -1248,7 +1046,7 @@ void Monitor::verify_logfiles( monitor_item *item )
 	logfile *lf;
 	long total_size=0, total_count=0;
 
-	LogMessage(item, "Verifying logfiles.");
+	Lprintf(item, "Verifying logfiles.");
 
 	forTLIST( lf, n, item->logfiles, logfile* ) {
 		verify_logfile( item, lf, &total_count, &total_size );
@@ -1265,7 +1063,7 @@ void Monitor::verify_logfiles( monitor_item *item )
 
 void Monitor::trim_logfiles( monitor_item *item )
 {
-	LogMessage(item, "Recycling logfiles. Current files: %ld size: %ld", item->cur_logfile_count, item->cur_logfile_size);
+	Lprintf(item, "Recycling logfiles. Current files: %ld size: %ld", item->cur_logfile_count, item->cur_logfile_size);
 	//! todo: delete oldest files first
 	//! reach trim_logfile_count and then reach trim_logfile_size
 	//! use item->log_archive_cmd or 'rm -f'
@@ -1515,11 +1313,11 @@ void Monitor::changed_watchfile( watchfile *lf )
 	dlog( LOG_FOUR, "changed_watchfile(%p)", lf );
 	if( inotify_fd >= 0 ) {
 		if( lf->watchdesc < 0 ) {
-			LogMessage( item, "watchfile: add inotify [%s]", lf->path);
+			Lprintf( item, "watchfile: add inotify [%s]", lf->path);
 			watchfile_add_scanner( item, lf );
 		}
 	} else {
-		LogMessage( item, "watchfile: no ready inotify controller" );
+		Lprintf( item, "watchfile: no ready inotify controller" );
 		if( lf->watchdesc >= 0 ) {
 			lf->watchdesc = -1;
 		}
@@ -1528,7 +1326,9 @@ void Monitor::changed_watchfile( watchfile *lf )
 	if( !lf->action || str_cn_cmp(lf->action, "restart") == 0 ) {
 		Restart(); // restart all groups
 	} else { // run a system command
-		QueueCommand( lf->action, NULL );
+		char buf[4096];
+		sprintf(buf, "%s %s", lf->action, lf->path);
+		QueueCommand( buf, NULL );
 	}
 	return;
 }
@@ -1539,11 +1339,11 @@ bool Monitor::checkup_watchfile( watchfile *lf )
 	dlog( LOG_FOUR, "checkup_watchfile(%p)", lf );
 	if( inotify_fd >= 0 ) {
 		if( lf->watchdesc < 0 ) {
-			LogMessage( item, "watchfile: add inotify [%s]", lf->path);
+			Lprintf( item, "watchfile: add inotify [%s]", lf->path);
 			watchfile_add_scanner( item, lf );
 		}
 	} else {
-		LogMessage( item, "watchfile: no ready inotify controller" );
+		Lprintf( item, "watchfile: no ready inotify controller" );
 		if( lf->watchdesc >= 0 ) {
 			lf->watchdesc = -1;
 		}
@@ -1576,7 +1376,7 @@ bool Monitor::checkup_process( runprocess *rp )
 	// check to make sure main pid is online:
 	if( rp->pid > 0 ) {
 		if( !pid_is_online( rp->pid ) ) {
-			LogMessage(rp, "Pid offline %d", rp->pid);
+			Lprintf(rp, "Pid offline %d", rp->pid);
 			rp->pid = 0;
 			pids_need_update=true;
 			// process died
@@ -1607,7 +1407,7 @@ bool Monitor::checkup_process( runprocess *rp )
 		forTSLIST( pd, n, rp->pids, pid_data*, nn ) {
 			if( !checkup_pid( rp, pd ) ) {
 				if( pd->pid == rp->pid ) {
-					LogMessage(rp, "Main pid not found");
+					Lprintf(rp, "Main pid not found");
 					rp->pid = 0;
 				}
 				free_pid_data(pd);
@@ -1653,7 +1453,7 @@ bool Monitor::checkup_pid( runprocess *rp, pid_data *pid )
 		pids_need_update=true;
 		return true;
 	} else {
-		LogMessage(rp, "Couldn't get process stats for %d.", pid->pid);
+		Lprintf(rp, "Couldn't get process stats for %d.", pid->pid);
 	}
 	return false;
 }
@@ -1772,7 +1572,7 @@ void Monitor::Start( void )
 
 	forTLIST( item, n, items, monitor_item* ) {
 		if( !Start(item) ) {
-			LogMessage(item, "Start was unsuccessful.");
+			Lprintf(item, "Start was unsuccessful.");
 			//! report errors
 		}
 	}
@@ -1793,12 +1593,12 @@ bool Monitor::Start( monitor_item *item )
 	time_t timeNow = time(NULL);
 
 	if( item->paused ) {
-		LogMessage(item, "Process is paused; not starting.");
+		Lprintf(item, "Process is paused; not starting.");
 		return false;
 	}
 
 	dlog( LOG_THREE, "start(%p)", item );
-	LogMessage(item, "Monitor::Start");
+	Lprintf(item, "Monitor::Start");
 
 	if( item->state != MON_STATE_NONE ) item->state=MON_STATE_NONE;//return true; // already monitoring
 
@@ -1810,14 +1610,14 @@ bool Monitor::Start( monitor_item *item )
 			if( str_cmp(require, tgt->name) == 0 ) {
 				found=true;
 				if( tgt->started_time < tgt->start_time || tgt->start_time == 0 || tgt->started_time >= timeNow ) {
-					LogMessage(item, "Monitor::require(%s) not met\n", require);
+					Lprintf(item, "Monitor::require(%s) not met\n", require);
 					return false;
 				}
 				break;
 			}
 		}
 		if( !found ) {
-			LogMessage(item, "Monitor::require(%s) not found\n", require);
+			Lprintf(item, "Monitor::require(%s) not found\n", require);
 			return false;
 		}
 	}
@@ -1831,7 +1631,7 @@ bool Monitor::Start( monitor_item *item )
 	}
 	forTLIST( rp, n, item->processes, runprocess* ) {
 		if( rp->autostart && !rp->paused && !start_process(item, rp) ) {
-			LogMessage(rp, "Couldn't start process %s", rp->startcmd);
+			Lprintf(rp, "Couldn't start process %s", rp->startcmd);
 			return false;
 		} else {
 			warmup += rp->warmup;
@@ -1839,7 +1639,7 @@ bool Monitor::Start( monitor_item *item )
 	}
 
 	item->started_time = time(NULL) + warmup;
-	LogMessage(item, "Start::Done");
+	Lprintf(item, "Start::Done");
 	return true;
 }
 
@@ -1889,7 +1689,7 @@ void Monitor::start_logfile_directory( monitor_item *item, logfile *lf_item, con
 	struct dirent* ofile;
 
 	if( lf_item->dirfiles != NULL ) {
-		LogMessage(item, "Warning: Re-initializing directory listing.");
+		Lprintf(item, "Warning: Re-initializing directory listing.");
 		delete lf_item->dirfiles;
 	}
 	lf_item->dirfiles = new tlist();
@@ -2021,14 +1821,26 @@ bool Monitor::start_watchfile( monitor_item *item, watchfile *lf )
 
 	return true;
 }
-
+void Monitor::force_start_process( monitor_item *item, runprocess *rp )
+{
+	rp->paused = false;
+	rp->start_tries = 0;
+	rp->start_time = 0;
+	try {
+	if( !start_process(item,rp) ) {
+		// oh well....
+	}
+	} catch(int v) {
+		// meh....
+	}
+}
 // Start a single process via fork/exec, service, or shell
 bool Monitor::start_process( monitor_item *item, runprocess *rp )
 {
 	stringbuf sb;
 
 	if( rp->paused ) {
-		LogMessage(rp, "Cannot start: process is paused by command.");
+		Lprintf(rp, "Cannot start: process is paused by command.");
 		return false;
 	}
 
@@ -2036,44 +1848,47 @@ bool Monitor::start_process( monitor_item *item, runprocess *rp )
 //	time_t current_time = time(NULL);
 //	time_t diff_time = current_time - rp->last_downtime_start;
 
-	if( rp->start_tries > 10 ) {
+	if( rp->start_tries > 33 ) {
 		rp->paused = true;
-		LogMessage(rp, "Cannot start: process is not starting up.");
+		Lprintf(rp, "Cannot start: process is not starting up. Let's get real here, folks.");
+		// find a logfile and read it
+		rp->start_tries = 0;
+		rp->start_time = time(NULL) + 60;
 		return false;
 	}
 	dlog( LOG_FOUR, "start_process(%p, %p)", item, rp );
-	LogMessage(rp, "start_process");
+	Lprintf(rp, "start_process");
 
 	if( rp->servicename ) {
 		sb.printf("service %s start\n", rp->servicename);
 		QueueCommand( sb.p, (void*)rp );
 		sb.clear();
 		rp->runstate = MON_STATE_INIT;
-		LogMessage(rp, "Starting service %s", rp->servicename);
+		Lprintf(rp, "Starting service %s", rp->servicename);
 
 		return true;
 	}
 	if( rp->shellproc ) {
-		LogMessage(rp, "Closing old shell..");
+		Lprintf(rp, "Closing old shell..");
 		close_process_pipe(rp);
 	}
-	LogMessage(rp, "Opening new shell");
+	Lprintf(rp, "Opening new shell");
 	Pipe *p = new Pipe();
 	rp->shellproc = p;
 	p->data = (void*)rp;
 
 	if( rp->logtofn ) {
-		LogMessage(rp, "Logging to: %s\n", rp->logtofn);
+		Lprintf(rp, "Logging to: %s\n", rp->logtofn);
 		p->log(rp->logtofn);
 	} else if( item->mainlog ) {
-		LogMessage(rp, "Logging to: %s", item->mainlog);
+		Lprintf(rp, "Logging to: %s", item->mainlog);
 		p->log(item->mainlog);
 	} else if( item->logglyTag ) {
-		LogMessage(rp, "Use loggly tag: %s", item->logglyTag);
+		Lprintf(rp, "Use loggly tag: %s", item->logglyTag);
 		if( item->logglyKey )
-			LogMessage(rp, "Use loggly key: %s", item->logglyKey);
+			Lprintf(rp, "Use loggly key: %s", item->logglyKey);
 	} else {
-		LogMessage(rp, "No log assigned");
+		Lprintf(rp, "No log assigned");
 	}
 	p->readCB = monitorReadHandler;
 	p->idleCB = monitorIdleHandler;
@@ -2089,11 +1904,11 @@ bool Monitor::start_process( monitor_item *item, runprocess *rp )
 	}
 
 	if( rp->noshell ) {
-		LogMessage(rp, "Running command");
+		Lprintf(rp, "Running command");
 		tlist *argsL = split( rp->startcmd, " " );
 		char **argsA = argsL->ToArray2<char*>((cloneFunction*)strdup);
 		if( rp->cwd ) {
-			LogMessage(rp, "Enter directory '%s'", rp->cwd);
+			Lprintf(rp, "Enter directory '%s'", rp->cwd);
 			p->chdir(rp->cwd);
 		}
 		if( rp->env ) {
@@ -2206,20 +2021,20 @@ bool Monitor::stop_logfile( logfile *lf )
 
 bool Monitor::stop_process( runprocess *rp )
 {
-	LogMessage(rp, "Attempt to stop process....\n");
+	Lprintf(rp, "Attempt to stop process....\n");
 	rp->runstate = MON_STATE_CRASHED;
 	if( rp->stopcmd ) {
-		LogMessage(rp, "Sending stop command %s\n", rp->stopcmd);
+		Lprintf(rp, "Sending stop command %s\n", rp->stopcmd);
 		QueueCommand( rp->stopcmd );
 	} else if( rp->pid > 0 ) {
-		LogMessage(rp, "Sending kill to pid %d.\n", rp->pid);
+		Lprintf(rp, "Sending kill to pid %d.\n", rp->pid);
 		kill(rp->pid, SIGTERM);
 		sleep(2);
 		kill(rp->pid, SIGKILL);
 	}
 
 	if( rp->shellproc ) {
-		LogMessage(rp, "Closing pipe.\n");
+		Lprintf(rp, "Closing pipe.\n");
 		close_process_pipe( rp );
 	}
 
@@ -2242,7 +2057,7 @@ void Monitor::Restart( monitor_item *item )
 	tnode *n;
 	runprocess *rp;
 
-	LogMessage(item, "Restarting group");
+	Lprintf(item, "Restarting group");
 	forTLIST( rp, n, item->processes, runprocess* ) {
 		restart_process(rp);
 	}
@@ -2264,6 +2079,8 @@ bool Monitor::restart_process( runprocess *rp )
 	}
 
 	// start:
+	rp->paused = false;
+	rp->start_time = time(NULL);
 	return start_process(item, rp);
 }
 
