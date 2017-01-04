@@ -16,7 +16,6 @@ void cmd_start(tlist *args)
 			mon->force_start_process(item, rp);
 			return;
 		}
-
 	}
 	item->paused = false;
 	mon->Start(item);
@@ -990,6 +989,11 @@ void Monitor::Iterate( void )
 	forTSLIST( item, n, items, monitor_item*, nn ) {
 		if( !item->paused )
 			Checkup(item);
+		else if( time_now >= item->start_time ) {
+			item->paused = false;
+			item->start_time = -1;
+			Start(item);
+		}
 	}
 
 	if( pids_need_update || web_online ) {
@@ -1850,7 +1854,7 @@ bool Monitor::start_process( monitor_item *item, runprocess *rp )
 
 	if( rp->start_tries > 33 ) {
 		rp->paused = true;
-		Lprintf(rp, "Cannot start: process is not starting up. Let's get real here, folks.");
+		Lprintf(rp, "Cannot start: process is not starting up. Waiting one minute for restart.");
 		// find a logfile and read it
 		rp->start_tries = 0;
 		rp->start_time = time(NULL) + 60;
