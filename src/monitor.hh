@@ -129,7 +129,8 @@ struct _monitor_item
 	char *mainlog; /// aggregate
 	char *logglyKey;
 	char *logglyTag;
-	bool paused;
+	bool paused, stage2;
+	time_t last_fail_startup;
 	long max_logfile_size, trim_logfile_size;
 	long max_logfile_count, trim_logfile_count;
 	long cur_logfile_size, cur_logfile_count;

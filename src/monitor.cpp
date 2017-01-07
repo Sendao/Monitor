@@ -1011,12 +1011,27 @@ bool Monitor::Checkup( monitor_item *item )
 	runprocess *rp;
 	bool foundChanges = false;
 
+	time_t current_time = time(NULL);
 	dlog( LOG_THREE, "checkup" );
 
-	if( item->start_time <= 0 ) {
-		Lprintf(item, "Group not yet started, trying to start it now.");
-		Start(item);
-		return true;
+	if( item->start_time <= current_time ) {
+		forTLIST( rp, n, item->processes, runprocess* ) {
+			if( rp->paused && rp->start_time <= current_time ) {
+				foundChanges = true;
+				rp->paused = false;
+			}
+		}
+		if( item->start_time <= 0 ) {
+			Lprintf(item, "Group not yet started, trying to start it now.");
+			item->paused=false;
+			Start(item);
+			return true;
+		} else if( foundChanges ) {
+			Lprintf(item, "Group paused, trying to start it now.");
+			item->paused=false;
+			Start(item);
+			return true;
+		}
 	}
 
 	forTLIST( lf, n, item->logfiles, logfile* ) {
@@ -1030,7 +1045,6 @@ bool Monitor::Checkup( monitor_item *item )
 		}
 	}
 
-	time_t current_time = time(NULL);
 	if( item->last_logfile_verify == 0 || ( foundChanges && current_time - item->last_logfile_verify > 600 ) ) { // 10 minutes
 		item->last_logfile_verify = current_time;
 		verify_logfiles(item);
@@ -1596,6 +1610,13 @@ bool Monitor::Start( monitor_item *item )
 	int warmup=0;
 	time_t timeNow = time(NULL);
 
+	if( item->start_time <= timeNow ) {
+		if( item->paused ) {
+			item->paused = false;
+			item->stage2 = true; // process has been restarted
+		}
+	}
+
 	if( item->paused ) {
 		Lprintf(item, "Process is paused; not starting.");
 		return false;
@@ -1841,6 +1862,7 @@ void Monitor::force_start_process( monitor_item *item, runprocess *rp )
 // Start a single process via fork/exec, service, or shell
 bool Monitor::start_process( monitor_item *item, runprocess *rp )
 {
+	time_t timeNow = time(NULL);
 	stringbuf sb;
 
 	if( rp->paused ) {
@@ -1852,12 +1874,25 @@ bool Monitor::start_process( monitor_item *item, runprocess *rp )
 //	time_t current_time = time(NULL);
 //	time_t diff_time = current_time - rp->last_downtime_start;
 
-	if( rp->start_tries > 33 ) {
+	if( item->stage2 && rp->start_tries > 3 ) {
+		rp->start_tries = 0;
+		rp->paused = true;
+		if( item->last_fail_startup < timeNow - 60 ) {
+			item->start_time = rp->start_time = timeNow + 600;
+			Lprintf(rp, "Cannot start: process is not starting up. Waiting ten minutes for restart.");
+		} else {
+			item->last_fail_startup = timeNow;
+			item->start_time = rp->start_time = timeNow + 180;
+			Lprintf(rp, "Cannot start: process is not starting up. Waiting three minutes for restart.");
+		}
+		return false;
+	}
+	if( rp->start_tries > 6 ) {
 		rp->paused = true;
 		Lprintf(rp, "Cannot start: process is not starting up. Waiting one minute for restart.");
 		// find a logfile and read it
 		rp->start_tries = 0;
-		rp->start_time = time(NULL) + 60;
+		item->start_time = rp->start_time = timeNow + 60;
 		return false;
 	}
 	dlog( LOG_FOUR, "start_process(%p, %p)", item, rp );
