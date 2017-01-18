@@ -7,7 +7,7 @@ Pipe::Pipe(void)
 	childproc = -1;
 	logfn = NULL;
 	logbuf = NULL;
-	readbuffer = new stringbuf(128);
+	readbuffer = new stringbuf(1024);
 	read_from_stdin = write_to_stdout = true;
 	support_password_block = false;
 	detect_new_username = detect_new_cwd = false;

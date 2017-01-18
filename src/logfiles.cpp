@@ -187,11 +187,19 @@ void Monitor::LogCrash( runprocess *rp, const char *howfound )
 	QueueCommand(sa->p);
 
 	sa->clear();
-	sa->printf("echo \"%s\" > '%s.crash%d'", howfound, item->name, crashnumber);
+	if( howfound && *howfound ) {
+		sa->printf("echo \"%s\" > '%s.crash%d'", howfound, item->name, crashnumber);
+	}
 
 	forTLIST( lf, n, item->logfiles, logfile* ) {
 		if( sa->len > 0 ) sa->append(" ; ");
 		sa->printf("tail -n%d %s >> '%s.crash%d'", lf->crashlines, lf->path, item->name, crashnumber);
+	}
+	forTLIST( rp2, n, item->processes, runprocess* ) {
+		if( rp2->logtofn ) {
+			if( sa->len > 0 ) sa->append(" ; ");
+			sa->printf("tail -n%d %s >> '%s.crash%d'", rp2->crashlines, rp2->logtofn, item->name, crashnumber);
+		}
 	}
 	sa->append("\n");
 	lprintf("LogCmd: %s", sa->p);

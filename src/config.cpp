@@ -150,6 +150,9 @@ void cfg_create_logfile( const char *value )
 void cfg_logfile_crashlines( const char *value )
 {
 	if( !cfg_lf ) {
+		if( cfg_rp ) {
+			cfg_rp->crashlines = atoi(value);
+		}
 		lprintf("Config: crashlines without logfile.");
 		return;
 	}

@@ -222,7 +222,7 @@ struct _runprocess
 	int last_pid_check;
 
 	time_t last_downtime_start;
-	int start_tries;
+	int start_tries, crashlines;
 //	time_t start_again;
 	time_t start_time;
 	int warmup;
