@@ -1778,7 +1778,7 @@ void Monitor::watchfile_add_scanner( monitor_item *item, watchfile *lf )
 		} else {
 			sb.printf("%s", lf->path);
 		}
-		wd = inotify_add_watch( inotify_fd, sb.p, IN_MODIFY | IN_DELETE );
+		wd = inotify_add_watch( inotify_fd, sb.p, IN_MODIFY | IN_DELETE | IN_CREATE );
 		lprintf("wd1: %d %s", wd, sb.p);
 		watchfiles->Set( wd, (void*)lf );
 		wdc = (int*)malloc(sizeof(int));
