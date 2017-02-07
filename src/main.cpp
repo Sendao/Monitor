@@ -9,10 +9,7 @@ int main(int ac, char *av[])
 {
 	if( ac >= 2 && str_cn_cmp(av[1], "daemon") == 0 ) { // start as a daemon
 		is_daemon=true;
-		lprintf("Spawning as daemon.");
 		daemon(1,0); // daemonize, keep directory, close stdin.
-	} else {
-		lprintf("Spawning as runtime process.");
 	}
 	mon = new Monitor();
 	curl = new Curler();
@@ -23,6 +20,7 @@ int main(int ac, char *av[])
 		lprintf("Using config file '%s'...", av[ac-1]);
 		loadConfig(av[ac-1]);
 	}
+
 	//! get hostname
 //	char hnbuf[1024];
 //	gethostname(hnbuf, 1024);
@@ -30,9 +28,14 @@ int main(int ac, char *av[])
 
 	mon->Start(); // start the processes. todo: dependencies
 	// do runtime loop
+	if( is_daemon ) {
+		lprintf("Spawning as daemon.");
+	} else {
+		lprintf("Spawning as runtime process.");
+	}
 	mainLoop();
-
 	lprintf("exit()");
+
 	delete mon;
 	delete curl;
 

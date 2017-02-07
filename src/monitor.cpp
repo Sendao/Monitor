@@ -1352,12 +1352,14 @@ void Monitor::changed_watchfile( watchfile *lf )
 }
 bool Monitor::checkup_watchfile( watchfile *lf )
 {
+	if( !lf ) return false;
+
 	monitor_item *item = lf->monitem;
 
-	dlog( LOG_FOUR, "checkup_watchfile(%p)", lf );
+	//dlog( LOG_FOUR, "checkup_watchfile(%p)", lf );
 	if( inotify_fd >= 0 ) {
-		if( lf->watchdesc < 0 ) {
-			Lprintf( item, "watchfile: add inotify [%s]", lf->path);
+		if( lf && lf->watchdesc < 0 && lf->path ) {
+			lprintf( "watchfile: add inotify [%s]", lf->path);
 			watchfile_add_scanner( item, lf );
 		}
 	} else {
