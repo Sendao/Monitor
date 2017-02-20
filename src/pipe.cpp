@@ -59,6 +59,8 @@ bool Pipe::open(void)
 {
 	char **args;
 
+	readbuffer->clear();
+
 	args = (char**) calloc( sizeof(char*), 3 );
 	args[0] = strdup("bash");
 	args[1] = strdup("-i");
@@ -287,7 +289,7 @@ int Pipe::read(char *buf, int maxlen, bool nonblocking)
 	select( maxfd, &ins, NULL, NULL, &timeout );
 	
 	if( FD_ISSET( fdm, &ins ) ) {
-		n = ::read( fdm, buf, maxlen );
+		n = ::read( fdm, buf, maxlen-1 );
 		if( n <= 0 ) {
 			buf[0] = '\0';
 			return n;
@@ -298,6 +300,9 @@ int Pipe::read(char *buf, int maxlen, bool nonblocking)
 		cleanstring(buf);
 		//lprintf("read[%d]:%s", n, buf);
 		if( support_password_block && ( (bufprompt=strstr(buf, "Password:")) != NULL ) ) {
+			if( readbuffer->len > 32000 ) {
+				readbuffer->clear();
+			}
 			readbuffer->append(buf);
 			if( readCB )
 				readCB(this, buf );
