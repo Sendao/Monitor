@@ -113,7 +113,7 @@ void mainLoop( void )
 		if( cycles > 0 ) {
 			dlog(LOG_ONE, "cycles %ld c_next %ld cps %ld timer %ld %ld", cycles, c_next, cur_cps, c_next, c_idle);
 		} else {
-			dlog(LOG_EIGHT, "cycles %ld c_next %ld cps %ld timer %ld %ld", cycles, c_next, cur_cps, c_next, c_idle);
+	//		dlog(LOG_EIGHT, "cycles %ld c_next %ld cps %ld timer %ld %ld", cycles, c_next, cur_cps, c_next, c_idle);
 		}
 		/* Read from stdin, maybe run commands */
 		if( !stdin_unavailable && FD_ISSET( STDIN_FILENO, &ins ) ) {
@@ -138,7 +138,7 @@ void mainLoop( void )
 		}
 
 		if( cycles > 0 ) {
-			dlog( LOG_ONE, "Work" );
+//			dlog( LOG_ONE, "Work" );
 //			lprintf("cycles:%d cps:%d", cycles, cur_cps);
 			mon->Iterate();
 

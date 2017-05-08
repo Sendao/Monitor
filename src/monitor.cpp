@@ -288,6 +288,69 @@ void Monitor::QueueCommand( const char *cmd, void *data, void *data2 )
 	}
 }
 
+
+// Report configuration and current states
+void Monitor::ReportStatus( void )
+{
+	monitor_item *item;
+	runprocess *rp;
+	logfile *lf;
+	pid_data *pd;
+	tnode *n, *n2, *n3;
+	float x, y, z;
+	tlist *q;
+	char *buf;
+	tlist *alist;
+
+	//lprintf("ReportStatus");
+	FILE *fp = fopen("/tmp/monitor.status", "w");
+
+	forTLIST( item, n, items, monitor_item* ) {
+		fprintf(fp, "group %s\n", item->name);
+		fprintf(fp, "state %d\n", item->state);
+		if( item->mainlog )
+			fprintf(fp, "logto %s\n", item->mainlog );
+		fprintf(fp, "logcount %ld\n", item->cur_logfile_count);
+		fprintf(fp, "logsize %ld\n", item->cur_logfile_size);
+
+		q = new tlist;
+		q->PushBack( item->logfiles );
+		while( q->nodes ) {
+			alist = (tlist*)q->FullPop();
+
+			forTLIST( lf, n2, alist, logfile* ) {
+				if( lf->dirfiles ) {
+					fprintf(fp, "logdir %s\n", lf->path);
+					q->PushBack(lf->dirfiles);
+				} else {
+					fprintf(fp, "logfile %s\n", lf->path);
+				}
+			}
+		}
+		delete q;
+
+		forTLIST( rp, n2, item->processes, runprocess* ) {
+			fprintf(fp, "process %s\n", rp->name);
+			fprintf(fp, "state %d %d\n", rp->runstate, rp->cmdstate);
+			fprintf(fp, "lastdown %ld\n", rp->last_downtime_start);
+			fprintf(fp, "start %ld\n", rp->start_time);
+			fprintf(fp, "mainpid %d\n", rp->pid);
+			forTLIST( pd, n3, rp->pids, pid_data* ) {
+				x = pd->per_u_min + pd->per_s_min;
+				y = pd->per_u_30s + pd->per_s_30s;
+				z = pd->per_u_10s + pd->per_s_10s;
+				//lprintf("%d:", pd->pid);
+				//lprintf("%.3f:", x);
+				//lprintf("%s", pd->procname);
+				//lprintf("%d:%.3f:%s", pd->pid, x, pd->procname);
+				fprintf(fp, "pid %d %.3f %.3f %.3f %s\n", pd->pid, x, y, z, pd->procname);
+			}
+		}
+	}
+
+	fclose(fp);
+}
+
 // Report which pids we are tracking and how much CPU they use to the watch.
 void Monitor::ReportPids( void )
 {
@@ -320,82 +383,6 @@ void Monitor::ReportPids( void )
 
 	fclose(fp);
 }
-
-/*
- *
-// Report configuration and current states
-void Monitor::ReportStatus( void )
-{
-	monitor_item *item;
-	runprocess *rp;
-	logfile *lf;
-	pid_data *pd;
-	tnode *n, *n2, *n3;
-	float x, y, z;
-	tlist *q;
-	char *buf;
-	tlist *alist;
-
-	//lprintf("ReportStatus");
-	FILE *fp = fopen("/tmp/monitor.status", "w");
-
-	forTLIST( item, n, items, monitor_item* ) {
-		fprintf(fp, "group %s\n", item->name);
-		fprintf(fp, "state %d\n", item->state);
-		if( item->mainlog )
-			fprintf(fp, "logto %s\n", item->mainlog );
-		fprintf(fp, "logcount %ld\n", item->cur_logfile_count);
-		fprintf(fp, "logsize %ld\n", item->cur_logfile_size);
-
-		forTLIST( buf, n2, item->requires, char* ) {
-			fprintf(fp, "require %s\n", buf);
-		}
-
-		q = new tlist;
-		q->PushBack( item->logfiles );
-		while( q->nodes ) {
-			alist = (tlist*)q->FullPop();
-
-			forTLIST( lf, n2, alist, logfile* ) {
-				if( lf->dirfiles ) {
-					fprintf(fp, "logdir %s\n", lf->path);
-					q->PushBack(lf->dirfiles);
-				} else {
-					fprintf(fp, "logfile %s\n", lf->path);
-				}
-			}
-		}
-		delete q;
-
-		forTLIST( rp, n2, item->processes, runprocess* ) {
-			fprintf(fp, "process %s\n", rp->name);
-			fprintf(fp, "state %d %d\n", rp->runstate, rp->cmdstate);
-			fprintf(fp, "lastdown %ld\n", rp->last_downtime_start);
-			fprintf(fp, "start %ld\n", rp->start_time);
-			fprintf(fp, "mainpid %d\n", rp->pid);
-			if( rp->cwd && *rp->cwd )
-				fprintf(fp, "cwd %s\n", rp->cwd);
-			if( rp->env && *rp->env )
-				fprintf(fp, "env %s\n", rp->env);
-			if( rp->psgrep )
-				fprintf(fp, "psgrep %s\n", rp->psgrep);
-			forTLIST( pd, n3, rp->pids, pid_data* ) {
-				x = pd->per_u_min + pd->per_s_min;
-				y = pd->per_u_30s + pd->per_s_30s;
-				z = pd->per_u_10s + pd->per_s_10s;
-				//lprintf("%d:", pd->pid);
-				//lprintf("%.3f:", x);
-				//lprintf("%s", pd->procname);
-				//lprintf("%d:%.3f:%s", pd->pid, x, pd->procname);
-				fprintf(fp, "pid %d %.3f %.3f %.3f %s\n", pd->pid, x, y, z, pd->procname);
-			}
-		}
-	}
-
-	fclose(fp);
-}
- */
-
 // Look for a process via the utility pipeline
 void Monitor::psgrep_process( runprocess *rp )
 {
@@ -998,7 +985,7 @@ void Monitor::Iterate( void )
 
 	if( pids_need_update || web_online ) {
 		ReportPids();
-		//ReportStatus();
+		ReportStatus();
 	}
 }
 
