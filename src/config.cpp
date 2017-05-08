@@ -177,7 +177,8 @@ void cfg_create_watch( const char *value )
 	watchfile *wf = new_watchfile();
 
 	wf->path = path;
-	wf->subdirs = true;
+	wf->subdirs = false;
+	// no support for matches is included, we just use the main path.
 	forTLIST( match, n, matches, char* ) {
 		wf->match->PushBack( match );
 		lprintf("Adding watch pattern %s %s", path, match);
