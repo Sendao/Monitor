@@ -111,7 +111,7 @@ void mainLoop( void )
 			c_next += cur_cps;
 		}
 		if( cycles > 0 ) {
-			dlog(LOG_ONE, "cycles %ld c_next %ld cps %ld timer %ld %ld", cycles, c_next, cur_cps, c_next, c_idle);
+//			dlog(LOG_ONE, "cycles %ld c_next %ld cps %ld timer %ld %ld", cycles, c_next, cur_cps, c_next, c_idle);
 		} else {
 	//		dlog(LOG_EIGHT, "cycles %ld c_next %ld cps %ld timer %ld %ld", cycles, c_next, cur_cps, c_next, c_idle);
 		}

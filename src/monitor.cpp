@@ -1762,13 +1762,8 @@ void Monitor::watchfile_add_scanner( monitor_item *item, watchfile *lf )
 	if( !lf->subdirs ) {
 		lprintf("start watch %s: no subdirectories", lf->path );
 		sb.clear();
-		if( lf->path[ strlen(lf->path) - 1 ] != '/' ) {
-			sb.printf("%s/", lf->path);
-		} else {
-			sb.printf("%s", lf->path);
-		}
-		wd = inotify_add_watch( inotify_fd, sb.p, IN_MODIFY | IN_DELETE | IN_CREATE );
-		lprintf("wd1: %d %s", wd, sb.p);
+		wd = inotify_add_watch( inotify_fd, lf->path, IN_MODIFY | IN_DELETE | IN_CREATE );
+		lprintf("wd1: %d %s", wd, lf->path);
 		watchfiles->Set( wd, (void*)lf );
 		wdc = (int*)malloc(sizeof(int));
 		*wdc = wd;
@@ -1778,7 +1773,12 @@ void Monitor::watchfile_add_scanner( monitor_item *item, watchfile *lf )
 
 		lprintf("start watch %s: subdirs", lf->path);
 
-		rc->Push( strdup( lf->path ) );
+		if( lf->path[ strlen(lf->path) - 1 ] != '/' ) {
+			sb.printf("%s/", lf->path);
+		} else {
+			sb.printf("%s", lf->path);
+		}
+		rc->Push( strdup( sb.p ) );
 		while( ( srcpath = (char*)rc->FullPop() ) ) {
 			//bool subdirs=false;
 
@@ -1792,7 +1792,7 @@ void Monitor::watchfile_add_scanner( monitor_item *item, watchfile *lf )
 					if( de->d_name[0] == '.' ) continue;
 					if( ( de->d_type & DT_DIR ) == DT_DIR ) {
 						sb.clear();
-						sb.printf( "%s/%s", srcpath, de->d_name );
+						sb.printf( "%s%s%s", srcpath, srcpath[strlen(srcpath)-1]=='/'?"":"/", de->d_name );
 						rc->PushBack( strdup( sb.p ) );
 						//subdirs=true;
 					}

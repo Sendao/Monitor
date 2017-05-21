@@ -28,7 +28,7 @@ void dlog( int flag, const char *fmt, ... )
     if( !fp ) {
 	return;
     }
-    fprintf(fp, "%2d:%2d:%2d %ld.%06ld %d:%s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, flag, sb.p);
+    fprintf(fp, "%02d:%02d:%02d %ld.%06ld %d:%s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, flag, sb.p);
     fclose(fp);
 }
 void lprintf( const char *fmt, ... )
@@ -59,7 +59,7 @@ void lprintf( const char *fmt, ... )
     if( !fp ) {
 	return;
     }
-    fprintf(fp, "%2d:%2d:%2d %ld.%06ld %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, sb.p);
+    fprintf(fp, "%02d:%02d:%02d %ld.%06ld %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, sb.p);
     if( fp != stdout )
     	fclose(fp);
 }
@@ -90,7 +90,7 @@ void Monitor::Lprintf( monitor_item *item, const char *fmt, ... )
     	fp = NULL;
 
     if( stdout ) {
-        fprintf(stdout, "%2d:%2d:%2d %ld.%06ld %s %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, item->name, sb.p);
+        fprintf(stdout, "%02d:%02d:%02d %ld.%06ld %s %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, item->name, sb.p);
         fflush(stdout);
     }
 
@@ -100,7 +100,7 @@ void Monitor::Lprintf( monitor_item *item, const char *fmt, ... )
     if( !fp ) {
 	return;
     }
-    fprintf(fp, "%2d:%2d:%2d %ld.%06ld %s %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, item->name, sb.p);
+    fprintf(fp, "%02d:%02d:%02d %ld.%06ld %s %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, item->name, sb.p);
     fclose(fp);
 }
 
@@ -125,7 +125,7 @@ void Monitor::Lprintf( runprocess *rp, const char *fmt, ... )
 
     fp = fopen(rp->logtofn, "a");
     if( stdout ) {
-        fprintf(stdout, "%2d:%2d:%2d %ld.%06ld %s %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, rp->name, sb.p);
+        fprintf(stdout, "%02d:%02d:%02d %ld.%06ld %s %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, rp->name, sb.p);
         fflush(stdout);
     }
     if( logglyKey && logglyTag ) {
@@ -134,7 +134,7 @@ void Monitor::Lprintf( runprocess *rp, const char *fmt, ... )
     if( !fp ) {
 	return;
     }
-    fprintf(fp, "%2d:%2d:%2d %ld.%06ld %s %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, rp->name, sb.p);
+    fprintf(fp, "%02d:%02d:%02d %ld.%06ld %s %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, rp->name, sb.p);
     fclose(fp);
 }
 

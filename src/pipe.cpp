@@ -322,6 +322,9 @@ int Pipe::read(char *buf, int maxlen, bool nonblocking)
 				*bufprompt = '\0';
 				matched_cmdline=true;
 			}
+			if( readbuffer->len > 32000 ) {
+				readbuffer->clear();
+			}
 			readbuffer->append(buf);
 			if( readCB )
 				readCB(this, buf );
