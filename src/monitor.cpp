@@ -388,6 +388,7 @@ void Monitor::psgrep_process( runprocess *rp )
 {
 	stringbuf *sb = new stringbuf();
 	dlog( LOG_THREE, "psgrep" );
+	rp->psgrep_missing = 0;
 	rp->last_psgrep_check = time_now;
 	rp->cmdstate = MON_CMD_PSGREP;
 	sb->printf("ps aux | egrep '%s' | grep -v grep | awk '{printf \"%%s:\", $2; for(i=11;i<=NF;i++){printf \"%%s \", $i}; printf \"\\n\";}'", rp->psgrep);
@@ -1763,11 +1764,12 @@ void Monitor::watchfile_add_scanner( monitor_item *item, watchfile *lf )
 		lprintf("start watch %s: no subdirectories", lf->path );
 		sb.clear();
 		wd = inotify_add_watch( inotify_fd, lf->path, IN_MODIFY | IN_DELETE | IN_CREATE );
-		lprintf("wd1: %d %s", wd, lf->path);
+		//lprintf("wd1: %d %s", wd, lf->path);
 		watchfiles->Set( wd, (void*)lf );
 		wdc = (int*)malloc(sizeof(int));
 		*wdc = wd;
 		lf->watch->PushBack( wdc );
+		lf->watchdesc = wd;
 	} else {
 		rc = new tlist();
 
@@ -1782,7 +1784,7 @@ void Monitor::watchfile_add_scanner( monitor_item *item, watchfile *lf )
 		while( ( srcpath = (char*)rc->FullPop() ) ) {
 			//bool subdirs=false;
 
-			lprintf("watch add %s", srcpath);
+			//lprintf("watch add %s", srcpath);
 
 			xd = opendir( srcpath );
 			if( !xd ) {
@@ -1801,17 +1803,18 @@ void Monitor::watchfile_add_scanner( monitor_item *item, watchfile *lf )
 				sb.clear();
 				if( srcpath[ strlen(srcpath)-1 ] != '/' ) {
 					sb.printf( "%s/", srcpath );
-					lprintf("add / to %s", srcpath);
+					//lprintf("add / to %s", srcpath);
 				} else {
 					sb.printf( "%s", srcpath );
-					lprintf("found / on %s", srcpath);
+					//lprintf("found / on %s", srcpath);
 				}
 				wd = inotify_add_watch( inotify_fd, sb.p, IN_MODIFY | IN_CREATE | IN_DELETE );
 				watchfiles->Set( wd, (void*)lf );
-				lprintf("wd: %d %s", wd, sb.p);
+				//lprintf("wd: %d %s", wd, sb.p);
 				wdc = (int*)malloc(sizeof(int));
 				*wdc = wd;
 				lf->watch->PushBack( (void*)wdc );
+				lf->watchdesc = 0;
 			}
 
 			free(srcpath);

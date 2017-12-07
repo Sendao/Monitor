@@ -137,6 +137,7 @@ void Pipe::run(char* const args[])
 //	int i;
 
 	close();
+	// create psuedoterminal pair
 	fdm = ::open("/dev/ptmx", O_RDWR);
 	if( fdm < 0 ) {
 		perror("open");
@@ -151,13 +152,14 @@ void Pipe::run(char* const args[])
 	// Fork into a shell
 	childproc = fork();
 	if( childproc == 0 ) {
+		// enter psuedoterminal slave
 		if( fdm >= 0 )
 			::close(fdm);
 		
 		if( use_newsid )
 			setsid();
 
-		if( usecwd ) {
+		if( usecwd ) { // since we're not actually in a shell, we just chdir
 			::chdir( usecwd );
 		}
 		if( useenv ) {
@@ -233,7 +235,7 @@ void Pipe::run(char* const args[])
 		fprintf( "" );
 		*/
 		
-		//lprintf("child:run");
+		lprintf("child:run(%s)", args[0]);
 		//execlp( "echo", "hello", "world");
 		execvp( args[0], args );
 		//execlp("/usr/local/bin/bash", "bash", "-l", "-i", NULL);
@@ -519,7 +521,10 @@ void Pipe::getcommandprompt( void )
 			if( i > readbuffer->len ) {
 				i = 0;
 			}
-			searchptr = strstr(readbuffer->p+i, "\n");
+			if( readbuffer->p )
+				searchptr = strstr(readbuffer->p+i, "\n");
+			else searchptr = NULL;
+
 			if( searchptr ) {
 				x = (searchptr - readbuffer->p);
 			} else if( n == 0 ) {
