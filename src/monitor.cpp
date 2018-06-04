@@ -388,7 +388,6 @@ void Monitor::psgrep_process( runprocess *rp )
 {
 	stringbuf *sb = new stringbuf();
 	dlog( LOG_THREE, "psgrep" );
-	rp->psgrep_missing = 0;
 	rp->last_psgrep_check = time_now;
 	rp->cmdstate = MON_CMD_PSGREP;
 	sb->printf("ps aux | egrep '%s' | grep -v grep | awk '{printf \"%%s:\", $2; for(i=11;i<=NF;i++){printf \"%%s \", $i}; printf \"\\n\";}'", rp->psgrep);
@@ -641,7 +640,10 @@ bool mainCmdHandler( Pipe *p )
 	if( m->cmd_data != NULL) {
 		//lprintf("cmd_data");
 		runprocess *rp = (runprocess*)m->cmd_data;
-		if( rp->runstate == MON_STATE_INIT ) {
+		if( rp->paused ) {
+			lprintf("Command recieved while paused.");
+
+		} else if( rp->runstate == MON_STATE_INIT ) {
 			rp->runstate = MON_STATE_RUNNING;
 			rp->cmdstate = MON_CMD_NONE;
 			if( rp->monitem ) {
@@ -671,14 +673,17 @@ bool mainCmdHandler( Pipe *p )
 			char *x;
 
 			if( lines->count < 1 ) {
-				m->Lprintf(rp, "Psgrep not found: '%s'", rp->psgrep);
+				m->Lprintf(rp, "Psgrep not found %d: '%s'", rp->psgrep_missing, rp->psgrep);
 				rp->psgrep_missing++;
 				if( rp->psgrep_missing > 3 ) {
 					m->Lprintf( rp, "Psgrep failure condition (3 strikes)." );
 					m->LogCrash( rp, "[psgrep]" );
 				}
 			} else {
-				rp->psgrep_missing=0;
+				if( rp->psgrep_missing != 0 ) {
+					m->Lprintf(rp, "Psgrep valid: %d lines", lines->count);
+					rp->psgrep_missing=0;
+				}
 			}
 
 			DMap *dm_prev = new DMap(32), *dm_current = new DMap(32);
@@ -741,7 +746,9 @@ bool mainCmdHandler( Pipe *p )
 			delete dm_current;
 
 			rp->cmdstate = MON_CMD_NONE;
-
+			if( rp->pid <= 0 && rp->psgrep_missing > 0 ) {
+				m->psgrep_process(rp);
+			}
 			m->pids_need_update = true;
 		}
 //	} else {
@@ -1377,6 +1384,7 @@ bool Monitor::checkup_process( runprocess *rp )
 	// when process starts, locate pids:
 	if( rp->runstate == MON_STATE_RUNNING && rp->psgrep && rp->cmdstate == MON_CMD_NONE && ( rp->pid <= 0 || rp->pids->count == 0 ) ) {
 		lprintf("Initial Psgrep: %s", rp->psgrep);
+		rp->psgrep_missing = 0;
 		psgrep_process(rp);
 		return true;
 	}
@@ -1384,11 +1392,13 @@ bool Monitor::checkup_process( runprocess *rp )
 	// check to make sure main pid is online:
 	if( rp->pid > 0 ) {
 		if( !pid_is_online( rp->pid ) ) {
+			lprintf("reset psgrep tries to 0");
 			Lprintf(rp, "Pid offline %d", rp->pid);
 			rp->pid = 0;
 			pids_need_update=true;
 			// process died
 			// try a psgrep - maybe it switched ids while we weren't looking
+			rp->psgrep_missing = 0;
 			psgrep_process(rp);
 			return false;
 		} else {
@@ -1435,6 +1445,9 @@ bool Monitor::checkup_process( runprocess *rp )
 	// re-run psgrep to update current pids:
 	if( rp->cmdstate == MON_CMD_NONE && rp->psgrep && rp->runstate == MON_STATE_RUNNING ) {
 		if( (time_now - 10) > rp->last_psgrep_check ) {
+			// in this case we are re-triggering psgrep so we do not
+			// rp->psgrep_missing = 0;
+			lprintf("retrigger psgrep");
 			psgrep_process(rp);
 		}
 		shell_online = true;
@@ -1856,6 +1869,12 @@ bool Monitor::start_process( monitor_item *item, runprocess *rp )
 {
 	time_t timeNow = time(NULL);
 	stringbuf sb;
+
+
+	if( rp->paused && rp->start_time > 0 && rp->start_time <= timeNow ) {
+		rp->paused = false;
+		Lprintf(rp, "Done waiting. Starting process.");
+	}
 
 	if( rp->paused ) {
 		Lprintf(rp, "Cannot start: process is paused by command.");
