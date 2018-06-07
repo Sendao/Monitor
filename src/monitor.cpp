@@ -2073,6 +2073,7 @@ bool Monitor::stop_process( runprocess *rp )
 {
 	Lprintf(rp, "Attempt to stop process....\n");
 	rp->runstate = MON_STATE_CRASHED;
+	rp->psgrep_missing = 0;
 	if( rp->stopcmd ) {
 		Lprintf(rp, "Sending stop command %s\n", rp->stopcmd);
 		QueueCommand( rp->stopcmd );
