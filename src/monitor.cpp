@@ -390,7 +390,7 @@ void Monitor::psgrep_process( runprocess *rp )
 	dlog( LOG_THREE, "psgrep" );
 	rp->last_psgrep_check = time_now;
 	rp->cmdstate = MON_CMD_PSGREP;
-	sb->printf("ps aux | egrep '%s' | grep -v grep | awk '{printf \"%%s:\", $2; for(i=11;i<=NF;i++){printf \"%%s \", $i}; printf \"\\n\";}'", rp->psgrep);
+	sb->printf("sleep 0.3 ; ps aux | egrep '%s' | grep -v grep | awk '{printf \"%%s:\", $2; for(i=11;i<=NF;i++){printf \"%%s \", $i}; printf \"\\n\";}'", rp->psgrep);
 	QueueCommand(sb->p, (void*)rp);
 	delete sb;
 }
@@ -1447,7 +1447,7 @@ bool Monitor::checkup_process( runprocess *rp )
 		if( (time_now - 10) > rp->last_psgrep_check ) {
 			// in this case we are re-triggering psgrep so we do not
 			// rp->psgrep_missing = 0;
-			lprintf("retrigger psgrep");
+			//lprintf("retrigger psgrep");
 			psgrep_process(rp);
 		}
 		shell_online = true;
