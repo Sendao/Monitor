@@ -1,0 +1,11 @@
+[Unit]
+Description=Controller for other services
+
+[Service]
+WorkingDirectory=/var/rad
+ExecStart=/var/rad/monitrage monitor.cfg
+IgnoreSIGPIPE=false
+
+[Install]
+WantedBy=multi-user.target
+Alias=monitor.service

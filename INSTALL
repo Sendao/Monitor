@@ -1,13 +1,17 @@
 # 0. be root.
+You'll need to configure the monitor before installing it. Until it is installed, the monitor can be run
+on the commandline. This is not a good way to run the monitor; you should install it or it may have issues
+forking new processes due to shell limitations.
 
 # 1. Fix the location in 'monitor.service' to point to the right runtime path.
 # ( So, send-slack.sh must be in PATH or it won't run as a service. workaround is to cwd from within the code or pipe)
 
-# 2. Run the 'install_services' to copy demo and monitor services to /etc/systemd/system.
+# 2. Copy monitor.sh to /etc/init.d and monitor.service to /lib/systemd/system
 
-# 3. Theorhetically, service monitor start ... but I haven't gotten that to actually work.
+# 3. Install the service with 'systemctl enable monitor'
 
-# 4. Instead, run 'screen -dm ./monitor ./monitor.cfg' or tmux new -s 'monitor' -d './monitor ./monitor.cfg' to start the service.
+# 4. Run the service with 'systemctl start monitor'
 
 # 5. Wait for updates! play some psdoom http://psdoom.sourceforge.net/
+
 
