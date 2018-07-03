@@ -3,7 +3,7 @@ Description=Controller for other services
 
 [Service]
 WorkingDirectory=/var/rad
-ExecStart=/var/rad/monitrage monitor.cfg
+ExecStart=/var/rad/monitrage /etc/monitor.cfg
 IgnoreSIGPIPE=false
 
 [Install]
