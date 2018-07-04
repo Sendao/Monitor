@@ -382,7 +382,7 @@ int Pipe::write(const char *buf)
 			fputs( buf, fp );
 			fclose( fp );
 		} else {
-			fprintf(stderr, "Unable to append file %s", logfn);
+			fprintf(stderr, "Unable to append file %s. Errcode %s (%d)", logfn, strerror(errno), errno);
 		}
 	}
 	

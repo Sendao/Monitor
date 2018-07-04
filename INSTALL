@@ -1,7 +1,9 @@
-Copy the file 'monitor.blank.service' to 'monitor.service'
-Then run 'mkdebug' or 'mkbuild'. cd to the created directory and run 'make ; sudo make install'
+Run 'mkdebug' or 'mkbuild'. cd to the created directory (debug or build) and run 'make ; sudo make install'
+
 You should now have a blank monitor running in the background. You can control the service using systemctl.
 systemctl status monitor ; systemctl start monitor ; systemctl status monitor
 
-Edit /etc/monitor.cfg to configure.
+Edit /etc/monitor.cfg to configure. Reload the monitor with 'systemctl restart monitor' to reload the config.
 
+If you run 'make install' again, it will overwrite your /etc/monitor.cfg. To avoid this, change the path to
+the config file in monitor.service, or remove or customize the monitor.cfg defaults.

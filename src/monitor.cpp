@@ -363,7 +363,7 @@ void Monitor::ReportPids( void )
 	dlog( LOG_THREE, "reportpids" );
 	FILE *fp = fopen("/tmp/monitor.pids", "w");
 	if( !fp ) {
-		lprintf("Cannot report monitor pids.");
+		lprintf("Cannot report monitor pids. (error: %s(%d))", strerror(errno), errno);
 		return;
 	}
 
@@ -1289,7 +1289,7 @@ void Monitor::changed_logfile( logfile *lf )
 					fputs(readbuf, fp);
 					fclose(fp);
 				} else {
-					lprintf("Cannot write to '%s': %s", item->mainlog, readbuf);
+					lprintf("Cannot write to '%s': %s (error: %s(%d))", item->mainlog, readbuf, strerror(errno), errno);
 				}
 			}
 
