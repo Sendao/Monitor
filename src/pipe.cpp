@@ -136,6 +136,9 @@ void Pipe::run(char* const args[])
 {
 //	int i;
 
+
+	lprintf("Pipe::run ... fork(%s)", use_newsid ? "new_session" : "same_session");
+
 	close();
 	// create psuedoterminal pair
 	fdm = ::open("/dev/ptmx", O_RDWR);
@@ -148,7 +151,6 @@ void Pipe::run(char* const args[])
 	unlockpt( fdm );
 	char *slavename = ptsname(fdm);
 
-	lprintf("fork(%s)", use_newsid ? "new_session" : "same_session");
 	// Fork into a shell
 	childproc = fork();
 	if( childproc == 0 ) {
@@ -159,9 +161,9 @@ void Pipe::run(char* const args[])
 		if( use_newsid )
 			setsid();
 
-		if( usecwd ) { // since we're not actually in a shell, we just chdir
+		if( usecwd ) // since we're not actually in a shell, we just chdir
 			::chdir( usecwd );
-		}
+
 		if( useenv ) {
 			tlist *envs = split(useenv, "\n");
 			tnode *n;
@@ -339,7 +341,7 @@ int Pipe::read(char *buf, int maxlen, bool nonblocking)
 				fputs( buf, fp );
 				fclose( fp );
 			} else {
-				lprintf("Cannot write to logfile '%s': %s", logfn, buf );
+				lprintf("Cannot write to logfile '%s': %s (errcode %s (%d))", logfn, buf, strerror(errno), errno );
 			}
 		}
 		if( logbuf ) {

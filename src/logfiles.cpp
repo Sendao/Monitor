@@ -26,7 +26,7 @@ void dlog( int flag, const char *fmt, ... )
 
     fp = fopen(mainlogfn, "a");
     if( !fp ) {
-	return;
+    	return;
     }
     fprintf(fp, "%02d:%02d:%02d %ld.%06ld %d:%s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, flag, sb.p);
     fclose(fp);
@@ -56,9 +56,9 @@ void lprintf( const char *fmt, ... )
     } else {
     	fp = fopen(mainlogfn, "a");
     }
-    if( !fp ) {
-	return;
-    }
+    if( !fp )
+    	return;
+
     fprintf(fp, "%02d:%02d:%02d %ld.%06ld %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, sb.p);
     if( fp != stdout )
     	fclose(fp);
@@ -97,9 +97,9 @@ void Monitor::Lprintf( monitor_item *item, const char *fmt, ... )
     if( logglyKey && logglyTag ) {
     	Lprintf( item, "%ld.%06ld %s %s", tv_now.tv_sec, tv_now.tv_usec, item->name, sb.p);
     }
-    if( !fp ) {
-	return;
-    }
+    if( !fp )
+    	return;
+
     fprintf(fp, "%02d:%02d:%02d %ld.%06ld %s %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, item->name, sb.p);
     fclose(fp);
 }
@@ -131,9 +131,9 @@ void Monitor::Lprintf( runprocess *rp, const char *fmt, ... )
     if( logglyKey && logglyTag ) {
     	Lprintf( rp->monitem, "%ld.%06ld %s %s", tv_now.tv_sec, tv_now.tv_usec, rp->name, sb.p);
     }
-    if( !fp ) {
-	return;
-    }
+    if( !fp )
+    	return;
+
     fprintf(fp, "%02d:%02d:%02d %ld.%06ld %s %s\n", realtime.tm_hour, realtime.tm_min, realtime.tm_sec, tv_now.tv_sec, tv_now.tv_usec, rp->name, sb.p);
     fclose(fp);
 }
