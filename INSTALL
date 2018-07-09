@@ -1,3 +1,5 @@
+Copy 'monitor.service.default' to 'monitor.service' to initialize your repository.
+
 Run 'mkdebug' or 'mkbuild'. cd to the created directory (debug or build) and run 'make ; sudo make install'
 
 You should now have a blank monitor running in the background. You can control the service using systemctl.

@@ -2,7 +2,8 @@
 Description=Controller for other services
 
 [Service]
-ExecStart=monitrage /etc/monitor.cfg
+ExecStart=/usr/local/bin/monitrage /etc/monitor.cfg
+WorkingDirectory=/tmp
 IgnoreSIGPIPE=false
 
 [Install]
